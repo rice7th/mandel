@@ -66,7 +66,7 @@ impl Stage {
             BufferUsage::Immutable,
             BufferSource::slice(&vertices),
         );
-        
+
         let index_buffer = ctx.new_buffer(
             BufferType::IndexBuffer,
             BufferUsage::Immutable,
@@ -88,8 +88,8 @@ impl Stage {
         let post_shader = ctx
             .new_shader(
                 ShaderSource::Glsl {
-                        vertex: shader::VERTEX,
-                        fragment: shader::FRAGMENT,
+                        vertex: post_shader::VERTEX,
+                        fragment: post_shader::FRAGMENT,
                 },
                 post_shader::meta(),
             )
@@ -108,8 +108,8 @@ impl Stage {
         let shader = ctx
             .new_shader(
                 ShaderSource::Glsl {
-                    vertex: post_shader::VERTEX,
-                    fragment: post_shader::FRAGMENT,
+                    vertex: shader::VERTEX,
+                    fragment: shader::FRAGMENT,
                 },
                 shader::meta(),
             )
