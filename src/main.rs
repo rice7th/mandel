@@ -16,6 +16,11 @@ struct Stage {
 
     pipeline: Pipeline,
     bindings: Bindings,
+
+    post_pipeline: Pipeline,
+    post_bindings: Bindings,
+
+    offscreen_pass: RenderPass,
     
     pos: (f32, f32),
     chunk: (u32, u32),
@@ -30,6 +35,21 @@ struct Stage {
 impl Stage {
     pub fn new() -> Stage {
         let mut ctx: Box<dyn RenderingBackend> = window::new_rendering_backend();
+        let (w, h) = window::screen_size();
+        let color_img = ctx.new_render_texture(TextureParams {
+            width: w as _,
+            height: h as _,
+            format: TextureFormat::RGBA8,
+            ..Default::default()
+        });
+        let depth_img = ctx.new_render_texture(TextureParams {
+            width: w as _,
+            height: h as _,
+            format: TextureFormat::Depth,
+            ..Default::default()
+        });
+
+        let offscreen_pass = ctx.new_render_pass(color_img, Some(depth_img));
 
         #[rustfmt::skip]
         let vertices: [Vertex; 4] = [
@@ -38,18 +58,26 @@ impl Stage {
             Vertex { pos : Vec2 { x:  1.0, y:  1.0 }, uv: Vec2 { x: 1., y: 1. } },
             Vertex { pos : Vec2 { x: -1.0, y:  1.0 }, uv: Vec2 { x: 0., y: 1. } },
         ];
+
+        let indices: &[u16] = &[0, 1, 2, 0, 2, 3];
+
         let vertex_buffer = ctx.new_buffer(
             BufferType::VertexBuffer,
             BufferUsage::Immutable,
             BufferSource::slice(&vertices),
         );
-
-        let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
+        
         let index_buffer = ctx.new_buffer(
             BufferType::IndexBuffer,
             BufferUsage::Immutable,
             BufferSource::slice(&indices),
         );
+
+        let post_bindings = Bindings {
+            vertex_buffers: vec![vertex_buffer],
+            index_buffer: index_buffer,
+            images: vec![color_img],
+        };
 
         let bindings = Bindings {
             vertex_buffers: vec![vertex_buffer],
@@ -57,11 +85,31 @@ impl Stage {
             images: vec![],
         };
 
-        let shader = ctx
+        let post_shader = ctx
             .new_shader(
                 ShaderSource::Glsl {
                         vertex: shader::VERTEX,
                         fragment: shader::FRAGMENT,
+                },
+                post_shader::meta(),
+            )
+            .unwrap();
+
+            let post_processing_pipeline = ctx.new_pipeline(
+                &[BufferLayout::default()],
+                &[
+                    VertexAttribute::new("pos", VertexFormat::Float2),
+                    VertexAttribute::new("uv", VertexFormat::Float2),
+                ],
+                post_shader,
+                PipelineParams::default()
+            );
+
+        let shader = ctx
+            .new_shader(
+                ShaderSource::Glsl {
+                    vertex: post_shader::VERTEX,
+                    fragment: post_shader::FRAGMENT,
                 },
                 shader::meta(),
             )
@@ -70,16 +118,24 @@ impl Stage {
         let pipeline = ctx.new_pipeline(
             &[BufferLayout::default()],
             &[
-                VertexAttribute::new("in_pos", VertexFormat::Float2),
-                VertexAttribute::new("in_uv", VertexFormat::Float2),
+                VertexAttribute::new("pos", VertexFormat::Float2),
+                VertexAttribute::new("uv", VertexFormat::Float2),
             ],
             shader,
-            PipelineParams::default(),
+            PipelineParams {
+                depth_test: Comparison::LessOrEqual,
+                depth_write: true,
+                ..Default::default()
+            },
         );
+
 
         Stage {
             pipeline,
             bindings,
+            offscreen_pass,
+            post_bindings,
+            post_pipeline: post_processing_pipeline,
             ctx,
             pos: (0., 0.),
             chunk: (2147483648, 2147483648),
@@ -104,6 +160,27 @@ impl Stage {
 
 impl EventHandler for Stage {
     fn update(&mut self) {}
+
+    fn resize_event(&mut self, width: f32, height: f32) {
+        let color_img = self.ctx.new_render_texture(TextureParams {
+            width: width as _,
+            height: height as _,
+            format: TextureFormat::RGBA8,
+            ..Default::default()
+        });
+        let depth_img = self.ctx.new_render_texture(TextureParams {
+            width: width as _,
+            height: height as _,
+            format: TextureFormat::Depth,
+            ..Default::default()
+        });
+
+        let offscreen_pass = self.ctx.new_render_pass(color_img, Some(depth_img));
+
+        self.ctx.delete_render_pass(self.offscreen_pass);
+        self.offscreen_pass = offscreen_pass;
+        self.post_bindings.images[0] = color_img;
+    }
 
     fn mouse_wheel_event(&mut self, _x: f32, y: f32) {
         if y > 0.0 {
@@ -170,10 +247,8 @@ impl EventHandler for Stage {
     }
 
     fn draw(&mut self) {
-        self.ctx.begin_default_pass(Default::default());
 
-        self.frames += 1;
-        dbg!(self.frames);
+
 
         if self.keys & 0b000001 != 0 { // forward
             self.pos.1 -= f32::exp2(self.move_speed);
@@ -212,7 +287,10 @@ impl EventHandler for Stage {
             self.iter = self.iter.saturating_sub(1);
         }
 
-
+        self.ctx.begin_pass(
+            Some(self.offscreen_pass),
+            PassAction::clear_color(0.0, 0.0, 0.0, 0.0),
+        );
         self.ctx.apply_pipeline(&self.pipeline);
         self.ctx.apply_bindings(&self.bindings);
         self.ctx
@@ -223,6 +301,16 @@ impl EventHandler for Stage {
                 zoom: self.zoom,
                 speed: self.move_speed,
                 iter: self.iter
+            }));
+        self.ctx.draw(0, 6, 1);
+        self.ctx.end_render_pass();
+
+        self.ctx.begin_default_pass(PassAction::Nothing);
+        self.ctx.apply_pipeline(&self.post_pipeline);
+        self.ctx.apply_bindings(&self.post_bindings);
+        self.ctx
+            .apply_uniforms(UniformsSource::table(&post_shader::Uniforms {
+                res: window::screen_size().into(),
             }));
         self.ctx.draw(0, 6, 1);
         self.ctx.end_render_pass();
@@ -269,3 +357,27 @@ mod shader {
         pub iter: u32
     }
 }
+
+
+mod post_shader {
+    use miniquad::*;
+
+    pub const VERTEX: &str = include_str!("vert.glsl");
+
+    pub const FRAGMENT: &str = include_str!("post.glsl");
+
+    pub fn meta() -> ShaderMeta {
+        ShaderMeta {
+            images: vec!["tex".to_string()],
+            uniforms: UniformBlockLayout {
+                uniforms: vec![UniformDesc::new("res", UniformType::Float2)],
+            },
+        }
+    }
+
+    #[repr(C)]
+    pub struct Uniforms {
+        pub res: (f32, f32),
+    }
+}
+

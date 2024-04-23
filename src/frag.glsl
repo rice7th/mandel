@@ -16,7 +16,6 @@ vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
     return a + b*cos( 6.28318*(c*t+d) );
 }
 
-
 dvec2 cmplx_pow2(dvec2 z) {
     return dvec2(z.x * z.x - z.y * z.y, 2 * z.x * z.y);
 }
@@ -27,7 +26,6 @@ dvec3 mandel(dvec2 c) {
         z = cmplx_pow2(z);
         z = dvec2(z.x + c.x, z.y + c.y);
         if (z.x > 2 || z.y > 2) {
-            //return mix(dvec3(1, 0, 0), dvec3(0, 1, 0), float(i) / (0.3 * iter));
             return dvec3(palette(float(i) / (0.3 * iter), vec3(0.5), vec3(0.5), vec3(1), vec3(0.00, 0.33, 0.67)));
         }
     }
@@ -43,6 +41,5 @@ void main() {
 
     dvec2 c = uv / exp2(zoom.x / 2) - position;
     dvec3 fractal = mandel(c);
-    //dmat2x2 fractal = dmat2x2(mandel(c), mandel(c+))
-    gl_FragColor = vec4(fractal, 1);
+    gl_FragColor = vec4(fractal, 1.0);
 }
