@@ -39,15 +39,55 @@ dvec3 mandel(dvec2 c) {
     return dvec3(0);
 }
 
-void main() {
-    dvec2 uv = (dvec2(gl_FragCoord.xy) / dvec2(res) - 0.5) * 4;
+/* I should do a median instead
+vec4 sort(vec4 vct) {
+    float q;
+    if (vct.x > vct.y) { q = vct.x; vct.x = vct.y; vct.y = q; }
+    if (vct.z > vct.w) { q = vct.z; vct.z = vct.w; vct.w = q; }
+    if (vct.x > vct.z) { q = vct.x; vct.x = vct.z; vct.z = q; }
+    if (vct.y > vct.w) { q = vct.y; vct.y = vct.w; vct.w = q; }
+    if (vct.y > vct.z) { q = vct.y; vct.y = vct.z; vct.z = q; }
+    return vct;
+}
+*/
+
+dvec2 get_c(dvec2 offset) {
+    dvec2 uv = ((dvec2(gl_FragCoord.xy * 3) + offset) / dvec2(res * 3) - 0.5) * 4;
     uv.x *= res.x / res.y;
 
-    dvec2 pos_d = dvec2(pos.x, pos.y);
-    dvec2 position = pos_d;
+    dvec2 position = dvec2(pos.x, pos.y);
 
     dvec2 c = uv / exp2(zoom.x / 2) - position;
+    return c;
+}
+
+void main() {
+    dvec2 c = get_c(dvec2(0));
+
+    dvec2 ct = get_c(dvec2(0,1));
+    dvec2 cb = get_c(dvec2(0,-1));
+    dvec2 cl = get_c(dvec2(-1,0));
+    dvec2 cr = get_c(dvec2(1,0));
+
+    dvec2 ctl = get_c(dvec2(-1, 1));
+    dvec2 ctr = get_c(dvec2(1));
+    dvec2 cbl = get_c(dvec2(-1));
+    dvec2 cbr = get_c(dvec2(1, -1));
+
     dvec3 fractal = mandel(c);
-    gl_FragColor = vec4(fractal, 1.0);
+
+    dvec3 fractalt = mandel(ct);
+    dvec3 fractalb = mandel(cb);
+    dvec3 fractall = mandel(cl);
+    dvec3 fractalr = mandel(cr);
+
+    dvec3 fractaltl = mandel(ctl);
+    dvec3 fractaltr = mandel(ctr);
+    dvec3 fractalbl = mandel(cbl);
+    dvec3 fractalbr = mandel(cbr);
+
+    gl_FragColor = vec4((fractalt + fractalb + fractall + fractalr + fractaltl + fractaltr + fractalbl + fractalbr) / 9, 1.0);
     //gl_FragColor = vec4(uv.x, uv.y, 0.0, 1.0);
 }
+
+
