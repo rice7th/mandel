@@ -23,7 +23,7 @@ void main() {
     vec3 final_colour = vec3(0.0);
     
     //create the 1-D kernel
-    float sigma = 0.5; // Blur amount
+    float sigma = 0.001; // Blur amount
     float Z = 0.0;
     for (int j = 0; j <= kSize; ++j)
     {
