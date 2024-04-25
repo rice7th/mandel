@@ -24,6 +24,8 @@
 - `Mouse wheel scroll up`: Increase movement speed
 - `E` Zoom in
 - `Q` Zoom out
+- `O` Toggle SSAA
+- `P` Toggle filtering
 
 ## Acknowledgments:
 Inigo Quilez's palette function: https://iquilezles.org/articles/palettes/
@@ -32,5 +34,11 @@ Inigo Quilez's palette function: https://iquilezles.org/articles/palettes/
 - [ ] Polish (code is very traumatizing in this state)
 - [ ] Proper Fp64 support
 - [ ] Refine chunk management
-- [ ] Anti Aliasing (going for a 2x2 sampling with bicubic interpolation probably)
-- [ ] Performance optimizations
+- [x] Anti Aliasing (3x3 SSAA, super unoptimized)
+
+### Performance optimizations:
+
+- [x] Cardioid & Bulb checking
+- [x] Length checking instead of naive greater-than-two approach
+- [ ] Periodicity checking
+- [ ] Image caching
