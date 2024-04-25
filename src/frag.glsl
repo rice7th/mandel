@@ -1,7 +1,7 @@
 #version 330
 #extension GL_ARB_gpu_shader_fp64 : enable
 
-#define SIMILAR 0.001
+#define SSAMOUNT 3
 
 in vec4 gl_FragCoord;
 uniform vec2 res;
@@ -59,7 +59,7 @@ vec4 sort(vec4 vct) {
 vec2 get_c(vec2 offset) {
     vec2 uv;
     if (ssaa == 1) {
-        uv = ((vec2(gl_FragCoord.xy * 3) + offset) / vec2(res * 3) - 0.5) * 4;
+        uv = ((vec2(gl_FragCoord.xy * SSAMOUNT) + offset) / vec2(res * SSAMOUNT) - 0.5) * 4;
     } else {
         uv = ((vec2(gl_FragCoord.xy) + offset) / vec2(res) - 0.5) * 4;
     }
@@ -70,6 +70,21 @@ vec2 get_c(vec2 offset) {
     vec2 c = uv / exp2(zoom.x / 2) - position;
     return c;
 }
+
+
+/*
+╭─────┬─────┬─────┬─────┬─────╮
+│-2,2 │-1,2 │ 0,2 │ 1,2 │ 2,2 │
+├─────┼─────┼─────┼─────┼─────┤
+│-2,1 │-1,1 │ 0,1 │ 1,1 │ 2,1 │
+├─────┼─────┼─────┼─────┼─────┤
+│-2,0 │-1,0 │ 0,0 │ 1,0 │ 2,0 │
+├─────┼─────┼─────┼─────┼─────┤
+│-2,-1│-1,-1│ 0,-1│ 1,-1│ 2,-1│
+├─────┼─────┼─────┼─────┼─────┤
+│-2,-2│-1,-2│ 0,-2│ 1,-2│ 2,-2│
+╰─────┴─────┴─────┴─────┴─────╯
+*/
 
 void main() {
     vec2 c = get_c(vec2(0));

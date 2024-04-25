@@ -221,11 +221,11 @@ impl EventHandler for Stage {
             self.keys |= 0b10000000;
         }
 
-        if keycode == KeyCode::P { // remove gaussian filter
-            self.keys |= 0b100000000;
+        if keycode == KeyCode::P { // TOGGLE Filter
+            self.filter = !self.filter;
         }
-        if keycode == KeyCode::O { // remove super sampling
-            self.keys |= 0b1000000000;
+        if keycode == KeyCode::O { // TOGGLE SSAA
+            self.ssaa = !self.ssaa;
         }
     }
 
@@ -254,13 +254,6 @@ impl EventHandler for Stage {
         }
         if keycode == KeyCode::Down { // Iter -
             self.keys &= !0b10000000;
-        }
-
-        if keycode == KeyCode::P { // remove gaussian filter
-            self.keys &= !0b100000000;
-        }
-        if keycode == KeyCode::O { // remove super sampling
-            self.keys &= !0b1000000000;
         }
     }
 
@@ -311,15 +304,6 @@ impl EventHandler for Stage {
         if self.keys & 0b1000000000 != 0 { // toggle supersampling
             self.ssaa = false;
         }
-
-        if self.keys & 0b100000000 == 0 { // toggle filter
-            self.filter = true;
-        }
-        if self.keys & 0b1000000000 == 0 { // toggle supersampling
-            self.ssaa = true;
-        }
-
-        dbg!(self.ssaa as u32);
 
         self.ctx.begin_pass(
             Some(self.offscreen_pass),
