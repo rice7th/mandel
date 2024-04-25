@@ -29,7 +29,9 @@ struct Stage {
     zoom_speed: f32,
     move_speed: f32,
     iter: u32,
-    frames: u32
+    frames: u32,
+    filter: bool,
+    ssaa: bool
 }
 
 impl Stage {
@@ -145,6 +147,8 @@ impl Stage {
             move_speed: 0.0,
             iter: 1000,
             frames: 0,
+            ssaa: true,
+            filter: true
         }
     }
 
@@ -216,6 +220,13 @@ impl EventHandler for Stage {
         if keycode == KeyCode::Down { // Iter -
             self.keys |= 0b10000000;
         }
+
+        if keycode == KeyCode::P { // remove gaussian filter
+            self.keys |= 0b100000000;
+        }
+        if keycode == KeyCode::O { // remove super sampling
+            self.keys |= 0b1000000000;
+        }
     }
 
     fn key_up_event(&mut self, keycode: KeyCode, _keymods: KeyMods) {
@@ -243,6 +254,13 @@ impl EventHandler for Stage {
         }
         if keycode == KeyCode::Down { // Iter -
             self.keys &= !0b10000000;
+        }
+
+        if keycode == KeyCode::P { // remove gaussian filter
+            self.keys &= !0b100000000;
+        }
+        if keycode == KeyCode::O { // remove super sampling
+            self.keys &= !0b1000000000;
         }
     }
 
@@ -287,6 +305,22 @@ impl EventHandler for Stage {
             self.iter = self.iter.saturating_sub(1);
         }
 
+        if self.keys & 0b100000000 != 0 { // toggle filter
+            self.filter = false;
+        }
+        if self.keys & 0b1000000000 != 0 { // toggle supersampling
+            self.ssaa = false;
+        }
+
+        if self.keys & 0b100000000 == 0 { // toggle filter
+            self.filter = true;
+        }
+        if self.keys & 0b1000000000 == 0 { // toggle supersampling
+            self.ssaa = true;
+        }
+
+        dbg!(self.ssaa as u32);
+
         self.ctx.begin_pass(
             Some(self.offscreen_pass),
             PassAction::clear_color(0.0, 0.0, 0.0, 0.0),
@@ -300,7 +334,8 @@ impl EventHandler for Stage {
                 chunk: self.chunk,
                 zoom: self.zoom,
                 speed: self.move_speed,
-                iter: self.iter
+                iter: self.iter,
+                ssaa: self.ssaa.into()
             }));
         self.ctx.draw(0, 6, 1);
         self.ctx.end_render_pass();
@@ -311,6 +346,7 @@ impl EventHandler for Stage {
         self.ctx
             .apply_uniforms(UniformsSource::table(&post_shader::Uniforms {
                 res: window::screen_size().into(),
+                filter: self.filter.into()
             }));
         self.ctx.draw(0, 6, 1);
         self.ctx.end_render_pass();
@@ -342,7 +378,8 @@ mod shader {
                                UniformDesc::new("chunk", UniformType::Int2),
                                UniformDesc::new("zoom", UniformType::Int2),
                                UniformDesc::new("speed", UniformType::Float1),
-                               UniformDesc::new("iter", UniformType::Int1),]
+                               UniformDesc::new("iter", UniformType::Int1),
+                               UniformDesc::new("ssaa", UniformType::Int1),]
             },
         }
     }
@@ -354,7 +391,8 @@ mod shader {
         pub chunk: (u32, u32),
         pub zoom: (u32, u32),
         pub speed: f32,
-        pub iter: u32
+        pub iter: u32,
+        pub ssaa: u32, // bool
     }
 }
 
@@ -370,7 +408,8 @@ mod post_shader {
         ShaderMeta {
             images: vec!["tex".to_string()],
             uniforms: UniformBlockLayout {
-                uniforms: vec![UniformDesc::new("res", UniformType::Float2)],
+                uniforms: vec![UniformDesc::new("res", UniformType::Float2),
+                               UniformDesc::new("filter_", UniformType::Int1)],
             },
         }
     }
@@ -378,6 +417,7 @@ mod post_shader {
     #[repr(C)]
     pub struct Uniforms {
         pub res: (f32, f32),
+        pub filter: u32, // bool
     }
 }
 

@@ -10,6 +10,8 @@ uniform ivec2 zoom;
 uniform vec2 speed;
 uniform int iter;
 uniform ivec2 chunk;
+uniform int ssaa;
+
 
 // Complex number such that vec2(a, bi).
 // vec.y is imag and vec.x is real
@@ -24,7 +26,6 @@ vec2 cmplx_pow2(vec2 z) {
 
 vec3 mandel(vec2 c) {
     vec2 z = vec2(0);
-    mat4x2 old;
 
     // Cardioid & bulb detection
     float p = sqrt((c.x*c.x - 0.5 * c.x + 1/16) + c.y*c.y);
@@ -35,11 +36,6 @@ vec3 mandel(vec2 c) {
     for (int i = 0; i < iter; i++) {
         z = cmplx_pow2(z);
         z = vec2(z.x + c.x, z.y + c.y);
-
-        old[0] = z;
-        old[1] = old[0];
-        old[2] = old[1];
-        old[3] = old[2];
 
         if (length(z) > 2) {
             return vec3(palette(float(i) / (0.1 * iter), vec3(0.5), vec3(0.5), vec3(1), vec3(0.00, 0.33, 0.67)));
@@ -61,7 +57,12 @@ vec4 sort(vec4 vct) {
 */
 
 vec2 get_c(vec2 offset) {
-    vec2 uv = ((vec2(gl_FragCoord.xy * 3) + offset) / vec2(res * 3) - 0.5) * 4;
+    vec2 uv;
+    if (ssaa == 1) {
+        uv = ((vec2(gl_FragCoord.xy * 3) + offset) / vec2(res * 3) - 0.5) * 4;
+    } else {
+        uv = ((vec2(gl_FragCoord.xy) + offset) / vec2(res) - 0.5) * 4;
+    }
     uv.x *= res.x / res.y;
 
     vec2 position = vec2(pos.x, pos.y);
@@ -83,20 +84,26 @@ void main() {
     vec2 cbl = get_c(vec2(-1));
     vec2 cbr = get_c(vec2(1, -1));
 
-    vec3 fractal = mandel(c);
+    if (ssaa == 1) {
 
-    vec3 fractalt = mandel(ct);
-    vec3 fractalb = mandel(cb);
-    vec3 fractall = mandel(cl);
-    vec3 fractalr = mandel(cr);
+        vec3 fractal = mandel(c);
 
-    vec3 fractaltl = mandel(ctl);
-    vec3 fractaltr = mandel(ctr);
-    vec3 fractalbl = mandel(cbl);
-    vec3 fractalbr = mandel(cbr);
+        vec3 fractalt = mandel(ct);
+        vec3 fractalb = mandel(cb);
+        vec3 fractall = mandel(cl);
+        vec3 fractalr = mandel(cr);
 
-    gl_FragColor = vec4((fractalt + fractalb + fractall + fractalr + fractaltl + fractaltr + fractalbl + fractalbr) / 9, 1.0);
-    //gl_FragColor = vec4(uv.x, uv.y, 0.0, 1.0);
+        vec3 fractaltl = mandel(ctl);
+        vec3 fractaltr = mandel(ctr);
+        vec3 fractalbl = mandel(cbl);
+        vec3 fractalbr = mandel(cbr);
+    
+        gl_FragColor = vec4((fractalt + fractalb + fractall + fractalr + fractaltl + fractaltr + fractalbl + fractalbr) / 9, 1.0);
+    } else {
+        vec3 fractal = mandel(c);
+        gl_FragColor = vec4(fractal, 1.0);
+    }
+
 }
 
 
