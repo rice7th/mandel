@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Mandel</h1>
-  A simple mandelbrot explorer in under 300 LoC
+  A simple mandelbrot explorer in under 1000 LoC
 </div>
 
 <hr>
